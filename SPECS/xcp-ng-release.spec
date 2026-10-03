@@ -42,6 +42,9 @@ Provides:       system-release(releasever) = %{base_release_version}
 Obsoletes:      almalinux-release
 # AlmaLinux Kitten names its release package differently; Obsoletes match names only
 Obsoletes:      almalinux-kitten-release
+# almalinux-kitten-repos requires almalinux-kitten-release = <exact version>.
+# Experiment: pinned to the Kitten release bridged on 2026-10-02.
+Provides:       almalinux-kitten-release = 10.0-21.el10
 Obsoletes:      centos-release
 
 # Metadata for the installer to consume
