@@ -34,12 +34,14 @@ Requires(posttrans): coreutils, grep
 # it pulls a useless empty xenserver-config everywhere
 #Requires:       system-config
 Provides:       almalinux-release = %{upstream_rel_long}
-Provides:       almalinux-release(x86-64) = %{upstream_rel_long}
+Provides:       almalinux-release%{?_isa} = %{upstream_rel_long}
 Provides:       centos-release = %{base_release_version}
 Provides:       redhat-release = %{upstream_rel_long}
 Provides:       system-release = %{upstream_rel_long}
 Provides:       system-release(releasever) = %{base_release_version}
 Obsoletes:      almalinux-release
+# AlmaLinux Kitten names its release package differently; Obsoletes match names only
+Obsoletes:      almalinux-kitten-release
 Obsoletes:      centos-release
 
 # Metadata for the installer to consume
