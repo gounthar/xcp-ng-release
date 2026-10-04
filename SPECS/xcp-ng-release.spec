@@ -188,6 +188,9 @@ sed -i '/^kernel.core_pattern=/ s/^/#/' %{buildroot}%{_sysconfdir}/sysctl.d/90-d
 
 # Don't install rsyslog config
 rm -r %{buildroot}%{_sysconfdir}/rsyslog.d/
+# riscv64: nor the 8.x rsyslog.service override, left behind when rsyslog
+# support was dropped for journald: without rsyslog it is a failed unit
+rm %{buildroot}%{_sysconfdir}/systemd/system/rsyslog.service
 
 %posttrans
 # XCP-ng 8.1: running this in posttrans instead of post because xcp-ng-release may be installed after
