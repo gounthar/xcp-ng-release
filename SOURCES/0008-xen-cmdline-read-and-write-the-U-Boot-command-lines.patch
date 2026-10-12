@@ -1,0 +1,126 @@
+From: Bruno Verachten <gounthar@gmail.com>
+Subject: [PATCH] xen-cmdline: read and write the U-Boot command lines
+
+A riscv64 host boots through U-Boot and has no grub.cfg, so
+Bootloader.loadExisting() raises before any option is looked at, and
+xapi cannot read or change the Xen or dom0 command line.
+
+/boot/boot.scr sets default command lines in xen_args and dom0_args,
+then overrides them from /boot/xen-cmdline.txt, plain name=value lines
+read with env import -t. When no grub.cfg is found and /boot/boot.scr
+exists, read the defaults from the script and the overrides from the
+file, and present them as one "xe" menu entry, which is all this
+script uses. commit() rewrites only xen_args and dom0_args, in place,
+keeps every other line, and replaces the file atomically. env import
+would let the file set any U-Boot variable, load addresses included,
+so nothing else is written, and a value with a newline is refused.
+
+Hosts with a grub.cfg are unaffected: the GRUB path runs first, and
+the error is unchanged when neither configuration exists.
+
+Signed-off-by: Bruno Verachten <gounthar@gmail.com>
+---
+--- a/src/common/opt/xensource/libexec/xen-cmdline
++++ b/src/common/opt/xensource/libexec/xen-cmdline
+@@ -11,12 +11,92 @@
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU Lesser General Public License for more details.
+ 
++import os
++import re
+ import sys
++import tempfile
+ 
+ from xcp.bootloader import *
+ 
+ labels = ['xe', 'xe-serial']
+ 
++# Hosts booted by U-Boot (riscv64) have no grub.cfg. /boot/boot.scr sets
++# default command lines in xen_args and dom0_args, then overrides them
++# from /boot/xen-cmdline.txt ("name=value" lines, env import -t).
++UBOOT_SCRIPT = '/boot/boot.scr'
++UBOOT_CMDLINE = '/boot/xen-cmdline.txt'
++UBOOT_VARS = ('xen_args', 'dom0_args')
++
++
++class UBootCmdline(object):
++    """The part of the Bootloader interface this script uses, for the
++    U-Boot boot script. Only xen_args and dom0_args are read or written:
++    env import would let the file set any U-Boot variable."""
++
++    def __init__(self, values, lines):
++        entry = MenuEntry(None, values['xen_args'], None,
++                          values['dom0_args'], None, title='xe')
++        self.menu = {'xe': entry}
++        self.menu_order = ['xe']
++        self.default = 'xe'
++        self.lines = lines
++
++    @classmethod
++    def load(cls):
++        values = dict.fromkeys(UBOOT_VARS, '')
++        with open(UBOOT_SCRIPT, 'rb') as f:
++            script = f.read().decode('utf-8', 'replace')
++        for var in UBOOT_VARS:
++            m = re.search(r'^\s*setenv\s+%s\s+"([^"]*)"' % var, script, re.M)
++            if m:
++                values[var] = m.group(1)
++        lines = []
++        if os.path.exists(UBOOT_CMDLINE):
++            with open(UBOOT_CMDLINE) as f:
++                lines = f.read().splitlines()
++            for line in lines:
++                name, sep, value = line.partition('=')
++                if sep and name in UBOOT_VARS:
++                    values[name] = value
++        return cls(values, lines)
++
++    def commit(self):
++        entry = self.menu['xe']
++        values = {'xen_args': entry.hypervisor_args,
++                  'dom0_args': entry.kernel_args}
++        for var, value in values.items():
++            if '\n' in value or '\r' in value:
++                raise ValueError("newline in %s" % var)
++        # Keep comments and other lines, replace each variable in place
++        # (first occurrence only), append the ones the file lacks.
++        out = []
++        written = set()
++        for line in self.lines:
++            name, sep, _ = line.partition('=')
++            if sep and name in values:
++                if name not in written:
++                    out.append('%s=%s' % (name, values[name]))
++                    written.add(name)
++                continue
++            out.append(line)
++        for var in UBOOT_VARS:
++            if var not in written:
++                out.append('%s=%s' % (var, values[var]))
++        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(UBOOT_CMDLINE))
++        with os.fdopen(fd, 'w') as f:
++            f.write('\n'.join(out) + '\n')
++        os.chmod(tmp, 0o644)
++        os.rename(tmp, UBOOT_CMDLINE)
++
++
++def load_bootloader():
++    try:
++        return Bootloader.loadExisting()
++    except RuntimeError:
++        if not os.path.exists(UBOOT_SCRIPT):
++            raise
++        return UBootCmdline.load()
++
+ 
+ def _get_menus(boot_loader):
+     return [x for x in boot_loader.menu_order if x in labels]
+@@ -72,7 +152,7 @@
+     args = []
+     operations = []
+ 
+-    b = Bootloader.loadExisting()
++    b = load_bootloader()
+ 
+     for arg in sys.argv[1:]:
+         if arg.startswith('--') and opt and len(args):
