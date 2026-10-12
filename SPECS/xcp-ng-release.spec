@@ -75,6 +75,7 @@ Patch1003: 0003-Sync-systemd-presets-with-xenserver-release-v8.4.0-1.patch
 Patch1004: 0004-fix-prompt-s-c-e-p-xcp-ng-prompt.sh-Fix-prompt-on-te.patch
 Patch1005: 0005-s-c-e-profile.d-history.sh-Add-timestamps-to-history.patch
 Patch1006: 0006-fix-prompt-s-c-e-p-xcp-ng-prompt.sh-Align-to-RPM-pat.patch
+Patch1007: 0007-xen-cmdline-keep-other-arguments-when-given-several-keys.patch
 
 %description
 XCP-ng release files

@@ -1,0 +1,31 @@
+From: Bruno Verachten <gounthar@gmail.com>
+Subject: [PATCH] xen-cmdline: keep other arguments when given several keys
+
+_filter_args() loops over the keys for every argument, so with
+match=False an argument is kept once for each key it does not match.
+With two or more keys, --set-xen and --delete-xen (and the dom0
+variants) duplicate every other argument, and keep the very argument
+being replaced, since it does not match the other key:
+
+  --set-xen dom0_mem=2048M loglvl=all on "sched=null dom0_mem=1536M"
+  gives "sched=null sched=null dom0_mem=1536M dom0_mem=2048M loglvl=all"
+
+Keep or drop each argument once, depending on whether any key matches.
+With one key the result is unchanged.
+
+Signed-off-by: Bruno Verachten <gounthar@gmail.com>
+---
+--- a/src/common/opt/xensource/libexec/xen-cmdline
++++ b/src/common/opt/xensource/libexec/xen-cmdline
+@@ -25,9 +25,8 @@
+     return arg.startswith(key + "=") or arg == key
+ 
+ def _filter_args(keys, args, match=True):
+-    if match:
+-        return [arg for arg in args for key in keys if _match_arg(key, arg)]
+-    return [arg for arg in args for key in keys if not _match_arg(key, arg)]
++    return [arg for arg in args
++            if any(_match_arg(key, arg) for key in keys) == match]
+ 
+ def get_xen_args(b, keys):
+     """Get xen args matching ks"""
