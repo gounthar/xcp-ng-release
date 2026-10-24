@@ -167,6 +167,12 @@ mkdir -p %{buildroot}%{_sysconfdir}/rpm
 install -p -m 0644 %{SOURCE700}  %{buildroot}%{_sysconfdir}/rpm/
 %endif
 
+# The AlmaLinux release package this one replaces ships the catch-all
+# "disable *" preset; on EL10 systemd no longer does, so without it every
+# unit no preset names gets enabled by preset-all in %%posttrans presets
+install -d -m 755 %{buildroot}%{_prefix}/lib/systemd/system-preset
+echo 'disable *' > %{buildroot}%{_prefix}/lib/systemd/system-preset/99-default-disable.preset
+
 # use unbranded datadir
 install -d -m 755 %{buildroot}/%{_datadir}/centos-release
 ln -s centos-release %{buildroot}/%{_datadir}/redhat-release
@@ -538,6 +544,7 @@ systemctl preset-all --preset-mode=enable-only || :
 %{_datadir}/redhat-release
 %{_datadir}/centos-release
 %{_prefix}/lib/systemd/system-preset/90-default.preset
+%{_prefix}/lib/systemd/system-preset/99-default-disable.preset
 /EULA
 %{python3_sitelib}/xcp/branding.py
 %{python3_sitelib}/xcp/__pycache__
