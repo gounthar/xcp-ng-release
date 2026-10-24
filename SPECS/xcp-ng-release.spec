@@ -24,7 +24,7 @@
 
 Name:           xcp-ng-release
 Version:        8.99.0
-Release:        3%{?autorev}
+Release:        4%{?autorev}
 Summary:        XCP-ng release file
 Group:          System Environment/Base
 License:        GPLv2
@@ -596,6 +596,11 @@ systemctl preset-all --preset-mode=enable-only || :
 
 # Keep this changelog through future updates
 %changelog
+* Sat Oct 24 2026 Bruno Verachten <gounthar@gmail.com> - 8.99.0-4
+- riscv64: ship the catch-all "disable *" preset almalinux-release carried
+- riscv64: leave xs-fcoe.service disabled
+- riscv64: xen-cmdline reads and writes the U-Boot command lines
+
 * Fri Sep 18 2026 Yann Dirson <yann.dirson@vates.tech> - 8.99.0-3
 - Append autorev macro to Release
 
