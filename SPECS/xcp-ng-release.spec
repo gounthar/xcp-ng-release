@@ -173,6 +173,16 @@ install -p -m 0644 %{SOURCE700}  %{buildroot}%{_sysconfdir}/rpm/
 install -d -m 755 %{buildroot}%{_prefix}/lib/systemd/system-preset
 echo 'disable *' > %{buildroot}%{_prefix}/lib/systemd/system-preset/99-default-disable.preset
 
+%ifarch riscv64
+# riscv64: no FCoE. fcoe-utils is not installed, and on EL10 it ships
+# /etc/fcoe/config instead of the /etc/sysconfig/fcoe xs-fcoe.service
+# reads, so an enabled xs-fcoe only fails at every boot
+sed -i 's/^enable xs-fcoe\.service$/disable xs-fcoe.service/' \
+    %{buildroot}%{_prefix}/lib/systemd/system-preset/89-default.preset
+grep -qx 'disable xs-fcoe.service' \
+    %{buildroot}%{_prefix}/lib/systemd/system-preset/89-default.preset
+%endif
+
 # use unbranded datadir
 install -d -m 755 %{buildroot}/%{_datadir}/centos-release
 ln -s centos-release %{buildroot}/%{_datadir}/redhat-release
